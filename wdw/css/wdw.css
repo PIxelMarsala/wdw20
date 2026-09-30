@@ -1,0 +1,108 @@
+H1              {
+                font-family: Verdana, Arial;
+                font-size: medium;
+                }
+H2              {
+                font-family: Verdana, Arial;
+                font-size: small;
+                }
+BODY            {
+                font-family: Verdana, Arial;
+                font-size: x-small;
+                margin: 0;
+                }
+TABLE           {
+                font-family: Verdana, Arial;
+                font-size: x-small;
+                }
+INPUT           {
+                font-family: Verdana, Arial;
+                font-size: x-small;
+                }
+SELECT          {
+                font-family: Verdana, Arial;
+                font-size: x-small;
+                }
+a:link          {
+                color: #FF6600;
+                font-weight: bold;
+                text-decoration: none;
+                }
+a:active        {
+                color: #FF6600;
+                font-weight: bold;
+                text-decoration: none;
+                }
+a:visited       {
+                color: #FF6600;
+                font-weight: bold;
+                text-decoration: none;
+                }
+a:hover         {
+                color: #FF6600;
+                font-weight: bold;
+                text-decoration: underline;
+                }
+.navtable       {
+                background-color: #000066;
+                color: #FFFFFF;
+                font-weight: bold;
+                }
+.navtext        {
+                color: #FFFFFF;
+                font-weight: bold;
+                }
+.navlink:link   {
+                color: silver;
+                text-decoration: none;
+                }
+.navlink:active {
+                color: silver;
+                text-decoration: none;
+                }
+.navlink:visited {
+                color: silver;
+                text-decoration: none;
+                }
+.navlink:hover  {
+                color: white;
+                text-decoration: underline;
+                }
+.rheader        {
+                background-color: #000066;
+                color: white;
+		font-weight: bold;
+                }
+.rheadercol2     {
+                border-color: black;
+                border-style: solid;
+                border-width: 1;
+                }
+.rheadercoll2    {
+                border-color: black;
+                border-right: 0;
+                border-style: solid;
+                border-width: 1;
+                }
+.rheadercolr2    {
+                border-color: black;
+                border-left: 0;
+                border-style: solid;
+                border-width: 1;
+                }
+.rbody          {
+                background-color: #FFFFFF;
+                }
+.rbodycol2       {
+                border-color: black;
+                border-style: solid;
+                border-top: 0;
+                border-width: 1;
+                }
+.smalltext       {
+                COLOR: gray;
+                FONT-FAMILY: Verdana, Arial;
+                FONT-SIZE: 9pt;
+                LINE-HEIGHT: 140%
+                }
+.devwarning {color:red; padding:10px; margin:20px; border:1px solid red; background-color:seashell;display:bock;}

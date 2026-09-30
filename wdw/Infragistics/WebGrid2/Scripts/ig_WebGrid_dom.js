@@ -1,0 +1,2231 @@
+
+/* 
+Infragistics UltraWebGrid Script 
+Version 2.0.5000
+Copyright (c) 2003 Infragistics, Inc. All Rights Reserved.
+*/
+
+var igtbl_gridState=[];
+
+function igtbl_grid(_gridElement,gridProps,gridEvents)
+{
+	this.SelectedRows=[];
+	this.SelectedColumns=[];
+	this.SelectedCells=[];
+	this.ExpandedRows=[];
+	this.CollapsedRows=[];
+	
+	this.ResizedColumns=[];
+	this.ResizedRows=[];
+	
+	this.ChangedCells=[];
+	
+	this.AddedRows=[];
+	this.DeletedRows=[];
+	
+	this.ActiveCell="";
+	this.ActiveRow="";
+	
+	this.grid=this;
+	this.lastSelectedRow="";
+	this.ScrollPos=0;
+	this.activeRect=null;
+	this.currentTriImg=null;
+	this.newImg=null;
+	
+	this.NeedPostBack=false;
+	this.CancelPostBack=false;
+	this.GridIsLoaded=false;
+	
+	this.exitEditCancel=false;
+	this.noCellChange=false;
+	this.insideSetActive=false;
+	
+    this.Id = _gridElement.id.substr(2);
+	this.Element = _gridElement;
+
+	this.props=gridProps;
+	this.AddNewBoxVisible=gridProps[0];
+	this.AddNewBoxView=gridProps[1];
+	this.AllowAddNew=gridProps[2];
+	this.AllowColSizing=gridProps[3];
+	this.AllowDelete=gridProps[4];
+	this.AllowSort=gridProps[5];
+	this.ItemClass=gridProps[6];
+	this.AltClass=gridProps[7];
+	this.AllowUpdate=gridProps[8];
+	this.CellClickAction=gridProps[9];
+	this.EditCellClass=gridProps[10];
+	this.Expandable=gridProps[11];
+	this.FooterClass=gridProps[12];
+	this.GroupByRowClass=gridProps[13];
+	this.GroupCount=gridProps[14];
+	this.HeaderClass=gridProps[15];
+	this.HeaderClickAction=gridProps[16];
+	this.Indentation=gridProps[17];
+	this.NullText=gridProps[18];
+	this.ExpAreaClass=gridProps[19];
+	this.RowLabelClass=gridProps[20];
+	this.SelGroupByRowClass=gridProps[21];
+	this.SelHeadClass=gridProps[22];
+	this.SelCellClass=gridProps[23];
+	this.RowSizing=gridProps[24];
+	this.SelectTypeCell=gridProps[25];
+	this.SelectTypeColumn=gridProps[26];
+	this.SelectTypeRow=gridProps[27];
+	this.ShowBandLabels=gridProps[28];
+	this.ViewType=gridProps[29];
+	this.AllowPaging=gridProps[30];
+	this.PageCount=gridProps[31];
+	this.CurrentPageIndex=gridProps[32];
+	this.CollapseImage=gridProps[33];
+	this.ExpandImage=gridProps[34];
+	this.CurrentRowImage=gridProps[35];
+	this.CurrentEditRowImage=gridProps[36];
+	this.NewRowImage=gridProps[37];
+	this.BlankImage=gridProps[38];
+	this.SortAscImg=gridProps[39];
+	this.SortDscImg=gridProps[40];
+	this.activeRectId=gridProps[41];
+	this.cultureInfo=gridProps[42].split("|");
+	this.RowSelectors=gridProps[43];
+	this.UniqueID=gridProps[44];
+	this.StationaryMargins=gridProps[45];
+	this.LoadOnDemand=gridProps[46];
+	this.RowLabelBlankImage=gridProps[47];
+
+	var cse=new init_Events(gridEvents);
+	this.Events=cse;
+
+	this.sortColumn=igtbl_sortColumn;
+	this.addSortColumn=igtbl_addSortColumn;
+	this.getActiveCell=igtbl_gGetActiveCell;
+	this.setActiveCell=igtbl_gSetActiveCell;
+	this.getActiveRow=igtbl_gGetActiveRow;
+	this.setActiveRow=igtbl_gSetActiveRow;
+	this.deleteSelectedRows=igtbl_gDeleteSelectedRows;
+	this.unloadGrid=igtbl_gUnloadGrid;
+	this.beginEditTemplate=igtbl_gEditTempl;
+	this.endEditTemplate=igtbl_gEndEditTempl;
+	this.GroupByBox=new igtbl_initGroupByBox(this);
+	this.find=igtbl_gFind;
+	this.findNext=igtbl_gFindNext;
+	this.alignGrid=igtbl_gAlignGrid;
+	this.selectCellRegion=igtbl_gSelectCellRegion;
+	this.selectRowRegion=igtbl_gSelectRowRegion;
+	this.selectColRegion=igtbl_gSelectColRegion;
+	this.startHourGlass=igtbl_gStartHourGlass;
+	this.stopHourGlass=igtbl_gEndHourGlass;
+	this.clearSelectionAll=igtbl_gClearSelectionAll;
+	
+	this.regExp=null;
+	this.backwardSearch=false;
+	this.lastSearchedCell=null;
+	
+	this.SuspendUpdates=false;
+	this.suspendUpdates=igtbl_gSuspendUpdates;
+
+	delete gridProps;
+	delete gridEvents;
+}
+
+function igtbl_gGetActiveCell()
+{
+	var ar=this.activeRect;
+	if(!ar)
+		return null;
+	var cellId=ar.getAttribute("srcElement");
+	var cell=igtbl_getElementById(cellId);
+	if(!cell || cell.tagName!="TD")
+		return null;
+	return igtbl_getCellById(cell.id);
+}
+
+function igtbl_gSetActiveCell(cell)
+{
+	if(!cell || !cell.Element || cell.Element.tagName!="TD")
+		igtbl_setActiveCell(this.Id,null);
+	else
+		igtbl_setActiveCell(this.Id,cell.Element);
+}
+
+function igtbl_gGetActiveRow()
+{
+	var ar=this.activeRect;
+	if(!ar)
+		return null;
+	var rowId=ar.getAttribute("srcElement");
+	var row=igtbl_getElementById(rowId);
+	if(!row || row.tagName!="TR")
+		return null;
+	row=igtbl_getWorkRow(row);
+	return igtbl_getRowById(row.id);
+}
+
+function igtbl_gSetActiveRow(row)
+{
+	if(!row || !row.Element || row.Element.tagName!="TR")
+		return;
+	igtbl_setActiveRow(this.Id,row.Element);
+}
+
+function igtbl_gDeleteSelectedRows()
+{
+	igtbl_deleteSelRows(this.Id);
+	igtbl_activate(this.Id);
+}
+
+function igtbl_gUnloadGrid()
+{
+	igtbl_unloadGrid(this.Id);
+}
+
+function igtbl_deleteSelRows(gn)
+{
+	var gs=igtbl_getGridById(gn);
+	var del=false;
+	var ar=gs.getActiveRow();
+	var r=null;
+	if(ar)
+	{
+		r=ar.getNextRow();
+		while(r && r.getSelected())
+			r=r.getNextRow();
+		if(!r)
+		{
+			r=ar.getPrevRow();
+			while(r && r.getSelected())
+				r=r.getPrevRow();
+		}
+		if(!r)
+			r=ar.ParentRow;
+	}
+	for(var rowId in gs.SelectedRows)
+		if(gs.SelectedRows[rowId]==true)
+		{
+			if(igtbl_deleteRow(gn,rowId))
+				del=true;
+		}
+	if(!del && ar && !gs.SelectedRows[ar.Element.id])
+		del=ar.deleteRow();
+	if(del && ar)
+	{
+		if(r)
+		{
+			r.setSelected();
+			r.activate();
+		}
+		else
+			gs.activeRect.style.display="none";
+		igtbl_updatePostField(gn);
+	}
+	if(gs.NeedPostBack)
+		igtbl_doPostBack(gn);
+}
+
+function igtbl_deleteRow(gn,rowId)
+{
+	var row=igtbl_getRowById(rowId);
+	if(!row)
+		return false;
+	return row.deleteRow();
+}
+
+function igtbl_gEditTempl()
+{
+	var row=this.getActiveRow();
+	if(!row)
+	{
+		var cell=this.getActiveCell();
+		if(cell)
+			row=cell.Row;
+	}
+	if(row)
+		row.editRow();
+}
+
+function igtbl_gEndEditTempl(saveChanges)
+{
+	var row=this.getActiveRow();
+	if(!row)
+	{
+		var cell=this.getActiveCell();
+		if(cell)
+			row=cell.Row;
+	}
+	if(row)
+		row.endEditRow(saveChanges);
+}
+
+function igtbl_gFind(re,back)
+{
+	var g=this;
+	if(re)
+		g.regExp=re;
+	if(!g.regExp)
+		return null;
+	g.lastSearchedCell=null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var row=null;
+	if(!g.backwardSearch)
+	{
+		row=g.Rows.getRow(0);
+		if(row && row.getHidden())
+			row=row.getNextRow();
+		while(row && row.find()==null)
+			row=row.getNextTabRow(false,true);
+	}
+	else
+	{
+		var rows=g.Rows;
+		while(rows)
+		{
+			row=rows.getRow(rows.length-1);
+			if(row && row.getHidden())
+				row=row.getPrevRow();
+			if(row && row.Expandable)
+				rows=row.Rows;
+			else
+			{
+				if(!row)
+					row=rows.ParentRow;
+				rows=null;
+			}
+		}
+		while(row && row.find()==null)
+			row=row.getNextTabRow(true,true);
+	}
+	return g.lastSearchedCell;
+}
+
+function igtbl_gFindNext(re,back)
+{
+	var g=this;
+	if(!g.lastSearchedCell)
+		return this.find(re,back);
+	if(re)
+		g.regExp=re;
+	if(!g.regExp)
+		return null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var row=g.lastSearchedCell.Row;
+	while(row && row.findNext()==null)
+		row=row.getNextTabRow(g.backwardSearch,true);
+	return g.lastSearchedCell;
+}
+
+function igtbl_gAlignGrid()
+{
+	var ac=this.getActiveCell();
+	if(ac)
+		this.setActiveCell(ac);
+	else
+	{
+		var ar=this.getActiveRow();
+		if(ar)
+			this.setActiveRow(ar);
+	}
+}
+
+function igtbl_gSelectCellRegion(startCell,endCell)
+{
+	var sCol=startCell.Column,eCol=endCell.Column;
+	if(sCol.Index>eCol.Index)
+	{
+		var c=sCol;
+		sCol=eCol;
+		eCol=c;
+	}
+	var sRow=startCell.Row,sRowIndex=sRow.getIndex(),eRow=endCell.Row,eRowIndex=eRow.getIndex();
+	if(sRowIndex>eRowIndex)
+	{
+		var c=sRow;
+		sRow=eRow;
+		eRow=c;
+		var i=sRowIndex;
+		sRowIndex=eRowIndex;
+		eRowIndex=i;
+	}
+	var pc=sRow.OwnerCollection;
+	var band=sCol.Band;
+	var selArray=new Array();
+	for(var i=sRowIndex;i<=eRowIndex;i++)
+	{
+		var row=pc.getRow(i);
+		if(!row.getHidden())
+			for(var j=sCol.Index;j<=eCol.Index;j++)
+			{
+				var col=band.Columns[j];
+				if(!col.getHidden())
+				{
+					var cell=row.getCellByColumn(col);
+					if(cell)
+						selArray[selArray.length]=cell.Element.id;
+				}
+			}
+	}
+	if(selArray.length>0)
+		igtbl_gSelectArray(this.Id,0,selArray);
+	delete selArray;
+}
+
+function igtbl_gSelectRowRegion(startRow,endRow)
+{
+	var sRowIndex=startRow.getIndex(),eRowIndex=endRow.getIndex();
+	if(sRowIndex>eRowIndex)
+	{
+		var r=startRow;
+		startRow=endRow;
+		endRow=r;
+		var i=sRowIndex;
+		sRowIndex=eRowIndex;
+		eRowIndex=i;
+	}
+	var pc=startRow.OwnerCollection;
+	var selArray=new Array();
+	for(var i=sRowIndex;i<=eRowIndex;i++)
+	{
+		var row=pc.getRow(i);
+		if(!row.getHidden())
+			selArray[selArray.length]=row.Element.id;
+	}
+	if(selArray.length>0)
+		igtbl_gSelectArray(this.Id,1,selArray);
+	delete selArray;
+}
+
+function igtbl_gSelectColRegion(startCol,endCol)
+{
+	if(startCol.Index>endCol.Index)
+	{
+		var c=startCol;
+		startCol=endCol;
+		endCol=c;
+	}
+	var band=startCol.Band;
+	var selArray=new Array();
+	for(var i=startCol.Index;i<=endCol.Index;i++)
+	{
+		var col=band.Columns[i];
+		if(!col.getHidden())
+			selArray[selArray.length]=col.Id;
+	}
+	if(selArray.length>0)
+		igtbl_gSelectArray(this.Id,2,selArray);
+	delete selArray;
+}
+
+var igtbl_waitDiv=null;
+var igtbl_wndOldCursor="";
+
+function igtbl_gStartHourGlass()
+{
+	if(!igtbl_waitDiv)
+	{
+		igtbl_waitDiv=document.createElement("div");
+		document.body.appendChild(igtbl_waitDiv);
+		igtbl_waitDiv.style.zIndex=10000;
+		igtbl_waitDiv.style.position="absolute";
+		igtbl_waitDiv.style.left=0;
+		igtbl_waitDiv.style.top=0;
+		igtbl_waitDiv.style.backgroundColor="transparent";
+	}
+	igtbl_waitDiv.style.display="";
+	igtbl_waitDiv.style.width=document.body.clientWidth;
+	igtbl_waitDiv.style.height=document.body.clientHeight;
+	igtbl_waitDiv.style.cursor="wait";
+	igtbl_wndOldCursor=document.body.style.cursor;
+	document.body.style.cursor="wait";
+}
+
+function igtbl_gEndHourGlass()
+{
+	if(igtbl_waitDiv)
+	{
+		igtbl_waitDiv.style.cursor="";
+		igtbl_waitDiv.style.display="none";
+		document.body.style.cursor=igtbl_wndOldCursor;
+	}
+}
+
+function igtbl_gClearSelectionAll()
+{
+	igtbl_clearSelectionAll(this.Id);
+}
+
+function igtbl_gSuspendUpdates(suspend)
+{
+	if(suspend==false)
+	{
+		this.SuspendUpdates=false;
+		igtbl_updatePostField(this.Id);
+	}
+	else
+		this.SuspendUpdates=true;
+}
+
+function igtbl_gSelectArray(gn,elem,array)
+{
+	var gs=igtbl_getGridById(gn);
+	if(elem==0)
+	{
+		var oldSelCells=gs.SelectedCells;
+		gs.SelectedCells=[];
+		for(var i=0;i<array.length;i++)
+			if(!oldSelCells[array[i]])
+				igtbl_selectCell(gn,array[i]);
+			else
+				gs.SelectedCells[array[i]]=true;
+		for(var cell in oldSelCells)
+			if(!gs.SelectedCells[cell])
+				igtbl_selectCell(gn,cell,false,false);
+		delete oldSelCells;
+	}
+	else if(elem==1)
+	{
+		var oldSelRows=gs.SelectedRows;
+		gs.SelectedRows=[];
+		for(var i=0;i<array.length;i++)
+			if(!oldSelRows[array[i]])
+				igtbl_selectRow(gn,array[i]);
+			else
+				gs.SelectedRows[array[i]]=true;
+		for(var row in oldSelRows)
+			if(!gs.SelectedRows[row])
+				igtbl_selectRow(gn,row,false,false);
+		delete oldSelRows;
+	}
+	else
+	{
+		var oldSelCols=gs.SelectedColumns;
+		gs.SelectedColumns=[];
+		for(var i=0;i<array.length;i++)
+			if(!oldSelCols[array[i]])
+				igtbl_selectColumn(gn,array[i]);
+			else
+				gs.SelectedColumns[array[i]]=true;
+		for(var col in oldSelCols)
+			if(!gs.SelectedColumns[col])
+				igtbl_selectColumn(gn,col,false,false);
+		delete oldSelCols;
+	}
+}
+
+function init_Events(ge)
+{
+	this.AfterCellUpdate=ge[0];
+	this.AfterColumnMove=ge[1];
+	this.AfterColumnSizeChange=ge[2];
+	this.AfterEnterEditMode=ge[3];
+	this.AfterExitEditMode=ge[4];
+	this.AfterRowActivate=ge[5];
+	this.AfterRowCollapsed=ge[6];
+	this.AfterRowDeleted=ge[7];
+	this.AfterRowTemplateClose=ge[8];
+	this.AfterRowTemplateOpen=ge[9];
+	this.AfterRowExpanded=ge[10];
+	this.AfterRowInsert=ge[11];
+	this.AfterRowSizeChange=ge[12];
+	this.AfterSelectChange=ge[13];
+	this.AfterSortColumn=ge[14];
+	this.BeforeCellChange=ge[15];
+	this.BeforeCellUpdate=ge[16];
+	this.BeforeColumnMove=ge[17];
+	this.BeforeColumnSizeChange=ge[18];
+	this.BeforeEnterEditMode=ge[19];
+	this.BeforeExitEditMode=ge[20];
+	this.BeforeRowActivate=ge[21];
+	this.BeforeRowCollapsed=ge[22];
+	this.BeforeRowDeleted=ge[23];
+	this.BeforeRowTemplateClose=ge[24];
+	this.BeforeRowTemplateOpen=ge[25];
+	this.BeforeRowExpanded=ge[26];
+	this.BeforeRowInsert=ge[27];
+	this.BeforeRowSizeChange=ge[28];
+	this.BeforeSelectChange=ge[29];
+	this.BeforeSortColumn=ge[30];
+	this.ClickCellButton=ge[31];
+	this.CellChange=ge[32];
+	this.CellClick=ge[33];
+	this.ColumnDrag=ge[34];
+	this.ColumnHeaderClick=ge[35];
+	this.DblClick=ge[36];
+	this.EditKeyDown=ge[37];
+	this.EditKeyUp=ge[38];
+	this.InitializeLayout=ge[39];
+	this.InitializeRow=ge[40];
+	this.KeyDown=ge[41];
+	this.KeyUp=ge[42];
+	this.MouseDown=ge[43];
+	this.MouseOver=ge[44];
+	this.MouseOut=ge[45];
+	this.MouseUp=ge[46];
+	this.RowSelectorClick=ge[47];
+	this.TemplateUpdateCells=ge[48];
+	this.TemplateUpdateControls=ge[49];
+	this.ValueListSelChange=ge[50];
+}
+
+function igtbl_band(grid, bandArray, count) 
+{
+    this.Grid=grid;
+	this.bnd=bandArray;
+	this.Key=bandArray[0];
+	this.AllowAddNew=bandArray[1];
+	this.AllowColSizing=bandArray[2];
+	this.AllowDelete=bandArray[3];
+	this.AllowSort=bandArray[4];
+	this.ItemClass=bandArray[5];
+	this.AltClass=bandArray[6];
+	this.AllowUpdate=bandArray[7];
+	this.CellClickAction=bandArray[8];
+	this.ColHeadersVisible=bandArray[9];
+	this.ColFootersVisible=bandArray[10];
+	this.CollapseImage=bandArray[11];
+	this.CurrentRowImage=bandArray[12];
+	this.CurrentEditRowImage=bandArray[13];
+	this.DefaultRowHeight=bandArray[14];
+	this.EditCellClass=bandArray[15];
+	this.Expandable=bandArray[16];
+	this.ExpandImage=bandArray[17];
+	this.FooterClass=bandArray[18];
+	this.GroupByRowClass=bandArray[19];
+	this.GroupCount=bandArray[20];
+	this.HeaderClass=bandArray[21];
+	this.HeaderClickAction=bandArray[22];
+	this.Visible=bandArray[23];
+	this.IsGrouped=bandArray[24];
+	this.ExpAreaClass=bandArray[25];
+	this.NonSelHeaderClass=bandArray[26];
+	this.RowLabelClass=bandArray[27];
+	this.SelGroupByRowClass=bandArray[28];
+	this.SelHeadClass=bandArray[29];
+	this.SelCellClass=bandArray[30];
+	this.RowSizing=bandArray[31];
+	this.SelectTypeCell=bandArray[32];
+	this.SelectTypeColumn=bandArray[33];
+	this.SelectTypeRow=bandArray[34];
+	this.RowSelectors=bandArray[35];
+	this.NullText=bandArray[36];
+	this.RowTemplate=bandArray[37];
+	if(this.RowTemplate!="")
+		this.ExpandEffects=new igtree_expandEffects(bandArray[38]);
+	this.AllowColumnMoving=bandArray[39];
+	this.ClientSortEnabled=bandArray[40];
+	this.Indentation=bandArray[41];
+	this.RowLabelWidth=bandArray[42];
+	
+	if(this.ClientSortEnabled)
+		this.Grid.sort=igtbl_sortGrid;
+
+	this.VisibleColumnsCount=0;
+	this.Index=parseInt(count,10);
+	
+	var colsArray = eval("igtbl_" + grid.Id + "_Columns_" + count);
+	var colCount =  colsArray.length;
+	this.Columns = new Array(colCount);
+	var i;
+	for(var i = 0; i < colCount; i++) {
+		this.Columns[i] = new igtbl_column(this, colsArray[i], i);
+		if(!this.Columns[i].Hidden)
+			this.VisibleColumnsCount++;
+	}
+	delete colsArray;
+	delete bandArray;
+
+	if(grid.AddNewBoxVisible)
+	{
+		if(count==0)
+			this.curTable=grid.Element;
+		var addNew=igtbl_getElementById(grid.Id+"_addBox");
+		if(grid.AddNewBoxView==0)
+			this.addNewElem = addNew.childNodes[0].rows[0].cells[1].childNodes[0].rows[count].cells[count].childNodes[0];
+		else
+			this.addNewElem = addNew.childNodes[0].rows[0].cells[1].childNodes[0].rows[0].cells[count*2].childNodes[0];
+	}
+
+	this.SortedColumns=new Array();
+	this.getSelectTypeRow=igtbl_gGetBandSelectTypeRow;
+	this.getSelectTypeCell=igtbl_gGetBandSelectTypeCell;
+	this.getSelectTypeColumn=igtbl_gGetBandSelectTypeColumn;
+	this.getColumnFromKey=igtbl_gGetBandColumnFromKey;
+	this.getExpandImage=igtbl_gGetBandExpandImage;
+	this.getCollapseImage=igtbl_gGetBandCollapseImage;
+	this.getRowStyleClassName=igtbl_gGetBandItemClass;
+	this.getRowAltClassName=igtbl_gGetBandAltClass;
+}
+
+function igtbl_gGetBandSelectTypeRow()
+{
+	var res=this.Grid.SelectTypeRow;
+	if(this.SelectTypeRow!=0)
+		res=this.SelectTypeRow;
+	return res;
+}
+
+function igtbl_gGetBandSelectTypeCell()
+{
+	var res=this.Grid.SelectTypeCell;
+	if(this.SelectTypeCell!=0)
+		res=this.SelectTypeCell;
+	return res;
+}
+
+function igtbl_gGetBandSelectTypeColumn()
+{
+	var res=this.Grid.SelectTypeColumn;
+	if(this.SelectTypeColumn!=0)
+		res=this.SelectTypeColumn;
+	return res;
+}
+
+function igtbl_gGetBandColumnFromKey(key)
+{
+	var column=null;
+	for(var i=0;i<this.Columns.length;i++)
+		if(this.Columns[i].Key==key)
+		{
+			column=this.Columns[i];
+			break;
+		}
+	return column;
+}
+
+function igtbl_gGetBandExpandImage()
+{
+	return igtbl_getExpandImage(this.Grid.Id,this.Index);
+}
+
+function igtbl_gGetBandCollapseImage()
+{
+	return igtbl_getCollapseImage(this.Grid.Id,this.Index);
+}
+
+function igtbl_gGetBandItemClass()
+{
+	if(this.ItemClass!="")
+		return this.ItemClass;
+	return this.Grid.ItemClass;
+}
+
+function igtbl_gGetBandAltClass()
+{
+	if(this.AltClass!="")
+		return this.AltClass;
+	return this.Grid.AltClass;
+}
+
+function igtree_expandEffects(values)
+{
+	this.Delay=values[0];
+	this.Duration=values[1];
+	this.Opacity=values[2];
+	this.ShadowColor=values[3];
+	this.ShadowWidth=values[4];
+	this.Type=values[5];
+}
+
+// Constuctor for the column object
+function igtbl_column(band, colArray, index)
+{
+	this.Band=band;
+	this.Index=index;
+	this.Id=band.Grid.Id+"c_"+band.Index.toString()+"_"+index.toString();
+    this.Key=colArray[0];
+    this.HeaderText=colArray[1];
+    this.DataType=parseInt(colArray[2],10);
+    this.CellMultiline=colArray[3];
+    this.Hidden=colArray[4];
+    this.AllowGroupBy=colArray[5];
+    this.AllowColResizing=colArray[6];
+    this.AllowUpdate=colArray[7];
+    this.Case=colArray[8];
+    this.FieldLength=parseInt(colArray[9],10);
+    this.CellButtonDisplay=colArray[10];
+    this.HeaderClickAction=colArray[11];
+    this.IsGroupBy=colArray[12];
+    this.MaskDisplay=colArray[13];
+    this.Selected=colArray[14];
+    this.SortIndicator=colArray[15];
+	this.NullText=colArray[16];
+    this.ButtonClass=colArray[17];
+    this.SelCellClass=colArray[18];
+    this.SelHeadClass=colArray[19];
+    this.Type=colArray[20];
+    this.ValueListPrompt=colArray[21];
+    this.ValueList=colArray[22];
+    this.ValueListClass=colArray[23];
+    this.WebComboId=colArray[24];
+    this.DefaultValue=colArray[25];
+    this.TemplatedColumn=colArray[26];
+    this.Validators=colArray[27];
+    this.CssClass=colArray[28];
+    this.Style=colArray[29];
+    this.Width=colArray[30];
+	while(this.WebComboId.indexOf(":") != -1)
+		this.WebComboId=this.WebComboId.replace(":", "x");
+	this.getAllowUpdate=igtbl_gGetColAllowUpdate;
+	this.getHidden=igtbl_gGetHidden;
+	this.setHidden=igtbl_gSetHidden;
+	//this.getFooterText=igtbl_gGetFooterText;
+	//this.setFooterText=igtbl_gSetFooterText;
+    delete colArray;
+
+	this.find=igtbl_gColFind;
+	this.findNext=igtbl_gColFindNext;
+}
+
+function igtbl_gGetColAllowUpdate()
+{
+	var g=this.Band.Grid;
+	var res=g.AllowUpdate;
+	if(this.Band.AllowUpdate!=0)
+		res=this.Band.AllowUpdate;
+	if(this.AllowUpdate!=0)
+		res=this.AllowUpdate;
+	if(this.TemplatedColumn)
+		res=2;
+	return res;
+}
+
+function igtbl_gGetHidden()
+{
+	return this.Hidden;
+}
+
+function igtbl_gSetHidden(h)
+{
+	this.Hidden=h;
+	if(this.Band.Index==0)
+	{
+		if(this.Band.Grid.StatHeader)
+		{
+			var el=this.Band.Grid.StatHeader.getElementByColumn(this);
+			el.style.display=(h?"none":"");
+		}
+		if(this.Band.Grid.StatFooter)
+		{
+			var el=this.Band.Grid.StatFooter.getElementByColumn(this);
+			el.style.display=(h?"none":"");
+		}
+	}
+	igtbl_hideColumn(this.Band.Grid.Rows,this,h);
+	if(this.Band.Index==0)
+	{
+		if(this.Band.Grid.StatHeader)
+			this.Band.Grid.StatHeader.ScrollTo(this.Band.Grid.Element.parentNode.scrollLeft);
+		if(this.Band.Grid.StatFooter)
+			this.Band.Grid.StatFooter.ScrollTo(this.Band.Grid.Element.parentNode.scrollLeft);
+	}
+	var ac=this.Band.Grid.getActiveCell();
+	if(ac && ac.Column==this && h)
+		this.Band.Grid.setActiveCell(null);
+	else
+		this.Band.Grid.alignGrid();
+}
+
+function igtbl_hideColumn(rows,col,hide)
+{
+	if(col.Band.Index==rows.Band.Index && rows.Element.previousSibling)
+	{
+		var tBody=rows.Element.previousSibling;
+		for(var i=0;i<tBody.childNodes[0].cells.length;i++)
+			if(tBody.childNodes[0].cells[i].id==col.Id)
+			{
+				tBody.childNodes[0].cells[i].style.display=(hide?"none":"");
+				if(hide)
+				{
+					col.Width=tBody.previousSibling.childNodes[i].width;
+					for(var j=i;j<tBody.previousSibling.childNodes.length-1;j++)
+						tBody.previousSibling.childNodes[j].width=tBody.previousSibling.childNodes[j+1].width;
+					tBody.previousSibling.childNodes[tBody.previousSibling.childNodes.length-1].width="";
+				}
+				else
+				{
+					for(var j=tBody.previousSibling.childNodes.length-2;j>=i;j--)
+						tBody.previousSibling.childNodes[j+1].width=tBody.previousSibling.childNodes[j].width;
+					tBody.previousSibling.childNodes[i].width=col.Width;
+				}
+				break;
+			}
+	}
+	for(var i=0;i<rows.length;i++)
+	{
+		var row=rows.getRow(i);
+		if(col.Band.Index==rows.Band.Index && !row.GroupByRow)
+			row.getCellByColumn(col).Element.style.display=(hide?"none":"");
+		else if(col.Band.Index>=rows.Band.Index && row.Expandable)
+		{
+			if(row.GroupByRow || col.Band.Index>rows.Band.Index)
+				igtbl_hideColumn(row.Rows,col,hide);
+		}
+	}
+}
+
+function igtbl_gColFind(re,back)
+{
+	var g=this.Band.Grid;
+	if(re)
+		g.regExp=re;
+	if(!g.regExp || this.IsGroupBy)
+		return null;
+	g.lastSearchedCell=null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var row=null;
+	if(!g.backwardSearch)
+	{
+		row=g.Rows.getRow(0);
+		if(row && row.getHidden())
+			row=row.getNextRow();
+		while(row && (row.Band!=this.Band || row.getCellByColumn(this).getValue().toString().search(g.regExp)==-1))
+			row=row.getNextTabRow(false,true);
+	}
+	else
+	{
+		var rows=g.Rows;
+		while(rows)
+		{
+			row=rows.getRow(rows.length-1);
+			if(row && row.getHidden())
+				row=row.getPrevRow();
+			if(row && row.Expandable)
+				rows=row.Rows;
+			else
+			{
+				if(!row)
+					row=rows.ParentRow;
+				rows=null;
+			}
+		}
+		while(row && (row.Band!=this.Band || row.getCellByColumn(this).getValue().toString().search(g.regExp)==-1))
+			row=row.getNextTabRow(true,true);
+	}
+	g.lastSearchedCell=(row?row.getCellByColumn(this):null);
+	return g.lastSearchedCell;
+}
+
+function igtbl_gColFindNext(re,back)
+{
+	var g=this.Band.Grid;
+	if(!g.lastSearchedCell || g.lastSearchedCell.Column!=this)
+		return this.find(re,back);
+	if(re)
+		g.regExp=re;
+	if(!g.regExp)
+		return null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var row=g.lastSearchedCell.Row.getNextTabRow(g.backwardSearch,true);
+	while(row && (row.Band!=this.Band || row.getCellByColumn(this).getValue().toString().search(g.regExp)==-1))
+		row=row.getNextTabRow(g.backwardSearch,true);
+	g.lastSearchedCell=(row?row.getCellByColumn(this):null);
+	return g.lastSearchedCell;
+}
+
+/*function igtbl_gGetFooterText()
+{
+}
+
+function igtbl_gSetFooterText(value)
+{
+}*/
+	
+function igtbl_initGroupByBox(grid)
+{
+	this.Element=igtbl_getElementById(grid.Id+"_groupBox");
+	this.pimgUp=igtbl_getElementById(grid.Id+"_pimgUp");
+	if(this.pimgUp)
+		this.pimgUp.style.zIndex=10000;
+	this.pimgDn=igtbl_getElementById(grid.Id+"_pimgDn");
+	if(this.pimgDn)
+		this.pimgDn.style.zIndex=10000;
+	this.postString="";
+	this.moveString="";
+	if(this.Element)
+	{
+		this.groups=new Array();
+		var gt=this.Element.childNodes[0];
+		if(gt.tagName=="TABLE")
+			for(var i=0;i<gt.rows.length;i++)
+				this.groups[i]=new igtbl_initGroupMember(gt.rows[i].cells[i]);
+	}
+}
+
+function igtbl_initGroupMember(e)
+{
+	var d=e.childNodes[0];
+	if(!d.getAttribute("groupInfo"))
+		return null;
+	this.Element=d;
+	this.groupInfo=d.getAttribute("groupInfo").split(":");
+	this.groupInfo[1]=parseInt(this.groupInfo[1],10);
+	if(this.groupInfo[0]=="col")
+		this.groupInfo[2]=parseInt(this.groupInfo[2],10);
+}
+
+function igtbl_initRowsCollection(parentRow,grid,bandNo)
+{
+	this.Grid=grid;
+	this.Band=grid.Bands[parseInt(bandNo,10)];
+	this.rows=new Array();
+	if(parentRow)
+	{
+		this.ParentRow=parentRow;
+		this.Element=null;
+		this.length=parentRow.ChildRowsCount;
+		if(this.length>0)
+		{
+			if(parentRow.GroupByRow)
+				this.Element=parentRow.Element.childNodes[0].childNodes[0].tBodies[0].childNodes[1].childNodes[0].childNodes[0].tBodies[0];
+			else
+				this.Element=parentRow.Element.nextSibling.childNodes[parentRow.Band.firstActiveCell].childNodes[0].tBodies[0];
+		}
+	}
+	else
+	{
+		this.ParentRow=null;
+		this.Element=grid.Element.tBodies[0];
+		this.length=this.Element.childNodes.length;
+		for(var i=0;i<this.Element.childNodes.length;i++)
+			if(this.Element.childNodes[i].getAttribute("hiddenRow"))
+				this.length--;
+	}
+	this.getRow=igtbl_clctnGetRow;
+	this.getRowById=igtbl_clctnGetRowById;
+	this.indexOf=igtbl_clctnIndexOf;
+	this.insert=igtbl_clctnInsert;
+	this.remove=igtbl_clctnRemove;
+	if(this.Band.Grid.sort)
+		this.sort=igtbl_clctnSort;
+}
+
+function igtbl_clctnGetRow(rowNo)
+{
+	if(rowNo<0)
+		return null;
+	if(rowNo>this.length)
+	{
+		for(var i=0;i<this.length-this.rows.length;i++)
+			this.rows.push(null);
+		return null;
+	}
+	if(rowNo>=this.rows.length)
+		for(var i=0;i<rowNo-this.rows.length+1;i++)
+			this.rows.push(null);
+	if(!this.rows[rowNo])
+	{
+		var row=null;
+		var cr=0;
+		for(var i=0;i<this.Element.childNodes.length;i++)
+			if(!this.Element.childNodes[i].getAttribute("hiddenRow"))
+			{
+				if(rowNo==cr)
+				{
+					row=this.Element.childNodes[i];
+					break;
+				}
+				cr++;
+			}
+		if(!row)
+			return null;
+		this.rows[rowNo]=new igtbl_initRowInfo(this.Grid.Id,row,this);
+	}
+	return this.rows[rowNo];
+}
+
+function igtbl_clctnGetRowById(rowId)
+{
+	for(var i=0;i<this.length;i++)
+	{
+		var row=this.getRow(i);
+		if(row.Element.id==rowId)
+			return row;
+	}
+	return null;
+}
+
+function igtbl_clctnIndexOf(row)
+{
+	for(var i=0;i<this.length;i++)
+		if(this.getRow(i).Element.id==row.Element.id)
+			return i;
+	return -1;
+}
+
+function igtbl_clctnInsert(row,rowNo)
+{
+	var row1=this.getRow(rowNo);
+	if(row1)
+	{
+		this.rows.splice(rowNo,0,row);
+		this.Element.insertBefore(row.Element,row1.Element);
+		if(row.Expandable && row.HiddenElement)
+			this.Element.insertBefore(row.HiddenElement,row1.Element);
+	}
+	else
+	{
+		this.rows.push(row);
+		this.Element.appendChild(row.Element);
+		if(row.Expandable && row.HiddenElement)
+			this.Element.appendChild(row.HiddenElement);
+	}
+}
+
+function igtbl_clctnRemove(rowNo)
+{
+	var row=this.getRow(rowNo);
+	this.Element.removeChild(row.Element);
+	if(row.Expandable && row.HiddenElement)
+		this.Element.removeChild(row.HiddenElement);
+	return this.rows.splice(rowNo,1)[0];
+}
+
+function igtbl_initStatHeader(gn)
+{
+	var gs=igtbl_getGridById(gn);
+	this.gridId=gn;
+	this.Element=gs.Element.parentNode.parentNode.parentNode.previousSibling.childNodes[0].childNodes[0].childNodes[0].childNodes[0];
+	this.Element.parentNode.parentNode.style.height=this.Element.parentNode.offsetHeight;
+	var j=0;
+	var comWidth=0;
+	for(var i=0;i<this.Element.childNodes[0].childNodes.length;i++)
+	{
+		var col=this.Element.childNodes[0].childNodes[i];
+		if(col.style.display=="" && gs.Element.childNodes[0].childNodes[j].offsetWidth>0)
+		{
+			var colW=gs.Element.childNodes[0].childNodes[j].offsetWidth;
+			col.style.width=colW;
+			comWidth+=colW;
+		}
+		if(col.getAttribute("columnNo"))
+		{
+			var colNo=parseInt(col.getAttribute("columnNo"));
+			gs.Bands[0].Columns[colNo].Element=col;
+			if(!gs.Bands[0].Columns[colNo].getHidden())
+				j++;
+		}
+		else
+			j++;
+	}
+	this.Element.parentNode.style.width=comWidth;
+	this.ScrollTo=igtbl_scrollStatHeader;
+	this.getElementByColumn=igtbl_shGetElemByCol;
+}
+
+function igtbl_scrollStatHeader(scrollLeft)
+{
+	var gs=igtbl_getGridById(this.gridId);
+	this.Element.parentNode.style.left=-scrollLeft;
+	var el=gs.StatHeader.Element.childNodes[0];
+	var j=0;
+	var comWidth=0;
+	for(var i=0;i<el.childNodes.length;i++)
+	{
+		var col=el.childNodes[i];
+		if(col.style.display=="")
+		{
+			var colW=gs.Element.childNodes[0].childNodes[j].offsetWidth;
+			if(col.offsetWidth!=colW)
+				col.style.width=colW;
+			comWidth+=colW;
+			j++;
+		}
+	}
+	this.Element.parentNode.style.width=comWidth;
+}
+
+function igtbl_shGetElemByCol(col)
+{
+	if(col.IsGroupBy)
+		return null;
+	var j=0;
+	for(var i=0;i<col.Index;i++)
+	{
+		if(!col.Band.Columns[i].IsGroupBy)
+			j++;
+	}
+	return this.Element.childNodes[0].childNodes[j+col.Band.firstActiveCell];
+}
+
+function igtbl_initStatFooter(gn)
+{
+	var gs=igtbl_getGridById(gn);
+	this.gridId=gn;
+	this.Element=gs.Element.parentNode.parentNode.parentNode.nextSibling.childNodes[0].childNodes[0].childNodes[0].childNodes[0];
+	this.Element.parentNode.parentNode.style.height=this.Element.parentNode.offsetHeight;
+	var j=0;
+	var comWidth=0;
+	for(var i=0;i<this.Element.childNodes[0].childNodes.length;i++)
+	{
+		var col=this.Element.childNodes[0].childNodes[i];
+		var colW=0;
+		if(col.style.display=="")
+		{
+			colW=gs.Element.childNodes[0].childNodes[j++].offsetWidth;
+			col.style.width=colW;
+			comWidth+=colW;
+		}
+	}
+	this.Element.parentNode.style.width=comWidth;
+	this.ScrollTo=igtbl_scrollStatFooter;
+	this.Resize=igtbl_resizeStatFooter;
+	this.getElementByColumn=igtbl_sfGetElemByCol;
+}
+
+function igtbl_scrollStatFooter(scrollLeft)
+{
+	this.Element.parentNode.style.left=-scrollLeft;
+}
+
+function igtbl_resizeStatFooter(index,width)
+{
+	var gs=igtbl_getGridById(this.gridId);
+	var el=igtbl_getElemVis(gs.StatFooter.Element.childNodes[0].childNodes,index);
+	this.Element.parentNode.style.width=this.Element.parentNode.offsetWidth+(width-el.offsetWidth);
+	el.style.width=width;
+}
+
+function igtbl_sfGetElemByCol(col)
+{
+	if(col.IsGroupBy)
+		return null;
+	var j=0;
+	for(var i=0;i<col.Index;i++)
+	{
+		if(!col.Band.Columns[i].IsGroupBy)
+			j++;
+	}
+	return this.Element.childNodes[0].childNodes[j+col.Band.firstActiveCell];
+}
+
+function igtbl_initRowInfo(gn,row,rowsClctn)
+{
+	var gs=igtbl_getGridById(gn);
+	this.gridId=gn;
+	this.Element=row;
+	this.GroupByRow=false;
+	this.GroupColId=null;
+	if(row.getAttribute("groupRow"))
+	{
+		this.GroupByRow=true;
+		this.GroupColId=row.getAttribute("groupRow");
+		var sTd=row.childNodes[0].childNodes[0].tBodies[0].childNodes[0].childNodes[0];
+		this.MaskedValue=sTd.getAttribute("cellValue");
+		this.Value=this.MaskedValue;
+		if(sTd.getAttribute("unmaskedValue"))
+			this.Value=sTd.getAttribute("unmaskedValue");
+		this.Value=igtbl_valueFromString(this.Value,igtbl_getColumnById(this.GroupColId).DataType);
+	}
+	else
+		this.GroupByRow=false;
+	var fr=igtbl_getFirstRow(row);
+	var bandNo=parseInt(fr.parentNode.parentNode.getAttribute("bandNo"),10);
+	var band=gs.Bands[bandNo];
+	this.Band=band;
+	this.Expandable=((fr.nextSibling && fr.nextSibling.getAttribute("hiddenRow") || this.Element.getAttribute("showExpand")) && (band.Expandable==1 || band.Expandable==0 && gs.Expandable==1));
+	this.ChildRowsCount=0;
+	this.VisChildRowsCount=0;
+	if(this.Expandable)
+	{
+		if(!this.GroupByRow && !this.Element.getAttribute("showExpand"))
+			this.HiddenElement=this.Element.nextSibling;
+		if(fr.nextSibling && fr.nextSibling.getAttribute("hiddenRow"))
+		{
+			this.ChildRowsCount=igtbl_rowsCount(igtbl_getChildRows(gn,row));
+			this.VisChildRowsCount=igtbl_visRowsCount(igtbl_getChildRows(gn,row));
+			this.Rows=new igtbl_initRowsCollection(this,gs,bandNo+(this.GroupByRow?0:1));
+			this.FirstChildRow=this.Rows.getRow(0);
+		}
+		this.toggleRow=igtbl_gToggleRow;
+	}
+	this.getExpanded=igtbl_gRowGetExpanded;
+	this.setExpanded=igtbl_gRowSetExpanded;
+	this.FirstRow=fr;
+	this.OwnerCollection=rowsClctn;
+	if(this.OwnerCollection)
+		this.ParentRow=this.OwnerCollection.ParentRow;
+
+	this.getIndex=igtbl_gRowGetIndex;
+	if(!this.GroupByRow)
+		this.cells=new Array(this.Element.cells.length-band.firstActiveCell);
+	this.getCell=igtbl_getCell;
+	this.getCellByColumn=igtbl_getCellByColumn;
+	this.getCellFromKey=igtbl_getCellFrom;
+	this.getChildRow=igtbl_getChildRow;
+	this.compare=igtbl_rowCompare;
+	this.remove=igtbl_rowRemove;
+	this.getNextTabRow=igtbl_gGetNextTabRow;
+	this.getSelected=igtbl_gGetRowSelected;
+	this.setSelected=igtbl_gSetRowSelected;
+	this.getNextRow=igtbl_gGetNextRow;
+	this.getPrevRow=igtbl_gGetPrevRow;
+	this.activate=igtbl_gRowActivate;
+	this.scrollToView=igtbl_gRowScrollToView;
+	this.deleteRow=igtbl_gRowDelete;
+	this.getLeft=igtbl_getRowLeft;
+	this.getTop=igtbl_getRowTop;
+	this.editRow=igtbl_gRowEdit;
+	this.endEditRow=igtbl_gRowEndEdit;
+	this.getHidden=igtbl_gRowGetHidden;
+	this.setHidden=igtbl_gRowSetHidden;
+	this.find=igtbl_gRowFind;
+	this.findNext=igtbl_gRowFindNext;
+	
+	this.Expanded=this.getExpanded();
+}
+
+function igtbl_gRowGetIndex()
+{
+	if(this.OwnerCollection)
+		return this.OwnerCollection.indexOf(this);
+	return -1;
+}
+
+function igtbl_rowCompare(row)
+{
+	if(this.OwnerCollection!=row.OwnerCollection)
+		return 0;
+	if(this.GroupByRow)
+		return igtbl_getColumnById(this.GroupColId).compareRows(this,row);
+	else
+	{
+		var sc=this.OwnerCollection.Band.SortedColumns;
+		for(var i=0;i<sc.length;i++)
+		{
+			var col=igtbl_getColumnById(sc[i]);
+			if(!col.IsGroupBy)
+			{
+				var cell1=this.getCellByColumn(col);
+				var cell2=row.getCellByColumn(col);
+				var res=col.compareCells(cell1,cell2);
+				if(res!=0)
+				{
+					return res;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+function igtbl_rowGetValue(colId)
+{
+	
+}
+
+function igtbl_rowRemove()
+{
+	return this.OwnerCollection.remove(this.OwnerCollection.indexOf(this));
+}
+
+function igtbl_getCell(index)
+{
+	if(index<0 || index>this.cells.length)
+		return null;
+	if(!this.cells[index])
+		this.cells[index]=new igtbl_initCellInfo(this,index);
+	return this.cells[index];
+}
+
+function igtbl_getCellByColumn(col)
+{
+	for(var i=0;i<this.cells.length;i++)
+	{
+		var cell=this.getCell(i);
+		if(cell.Column==col)
+			return cell;
+	}
+	return null;
+}
+
+function igtbl_getCellFrom(key)
+{
+	var cell=null;
+	var col=this.Band.getColumnFromKey(key);
+	if(col)
+		cell=this.getCellByColumn(col);
+	return cell;
+}
+
+function igtbl_gGetNextTabRow(shift,ignoreCollapse)
+{
+	var row=null;
+	if(shift)
+	{
+		row=this.getPrevRow();
+		if(row)
+		{
+			while(row.getExpanded() || ignoreCollapse && row.Expandable)
+				row=row.Rows.getRow(row.Rows.length-1);
+		}
+		else if(this.ParentRow)
+			row=this.ParentRow;
+	}
+	else
+	{
+		if(this.getExpanded() || ignoreCollapse && this.Expandable)
+			row=this.Rows.getRow(0);
+		else
+		{
+			row=this.getNextRow();
+			if(!row && this.ParentRow)
+			{
+				var pr=this.ParentRow;
+				while(!row && pr)
+				{
+					row=pr.getNextRow();
+					pr=pr.ParentRow;
+				}
+			}
+		}
+	}
+	return row;
+}
+
+function igtbl_gRowGetExpanded(expand)
+{
+	return (this.Expandable && igtbl_getGridById(this.gridId).ExpandedRows[this.FirstRow.id]==true);
+}
+
+function igtbl_gRowSetExpanded(expand)
+{
+	if(expand!=false)
+		expand=true;
+	if(this.Expandable)
+	{
+		var gn=this.gridId;
+		var srcRow=this.FirstRow.id;
+		var sr = igtbl_getElementById(srcRow);
+		var hr = sr.nextSibling;
+		var gs=igtbl_getGridById(gn);
+		var cancel=false;
+		if(expand!=false) 
+		{
+			if(igtbl_fireEvent(gn,gs.Events.BeforeRowExpanded,"(\""+gn+"\",\""+srcRow+"\");")==true)
+				cancel=true;
+			if(!cancel)
+			{
+				if(!gs.NeedPostBack || gs.LoadOnDemand==1 && this.Rows && this.Rows.length>0)
+				{
+					gs.NeedPostBack=false;
+					if(hr.getAttribute("hiddenRow"))
+						hr.style.display = "";
+					sr.childNodes[0].childNodes[0].src=this.Band.getCollapseImage();
+				}
+				igtbl_stateExpandRow(gn,srcRow,true);
+				if(!gs.NeedPostBack)
+					igtbl_fireEvent(gn,gs.Events.AfterRowExpanded,"(\""+gn+"\",\""+srcRow+"\");");
+			}
+		}
+		else
+		{
+			if(igtbl_fireEvent(gn,gs.Events.BeforeRowCollapsed,"(\""+gn+"\",\""+srcRow+"\")")==true)
+				cancel=true;
+			if(!cancel)
+			{
+				if(!gs.NeedPostBack)
+				{
+					if(hr.getAttribute("hiddenRow"))
+						hr.style.display = "none";
+					sr.childNodes[0].childNodes[0].src=this.Band.getExpandImage();
+				}
+				igtbl_stateExpandRow(gn,srcRow,false);
+				if(!gs.NeedPostBack)
+					igtbl_fireEvent(gn,gs.Events.AfterRowCollapsed,"(\""+gn+"\",\""+srcRow+"\");");
+			}
+		}
+		if(!cancel)
+		{
+			if(gs.ActiveCell!="")
+				igtbl_setActiveCell(gn,igtbl_getElementById(gs.ActiveCell));
+			else if(gs.ActiveRow!="")
+				igtbl_setActiveRow(gn,igtbl_getElementById(gs.ActiveRow));
+			igtbl_updatePostField(gn);
+			if(gs.NeedPostBack)
+			{
+				if(expand!=false) 
+					igtbl_moveBackPostField(gn,"ExpandedRows");
+				else
+					igtbl_moveBackPostField(gn,"CollapsedRows");
+			}
+		}
+		if(gs.NeedPostBack)
+			igtbl_doPostBack(gn);
+	}
+}
+
+function igtbl_gToggleRow()
+{
+	this.setExpanded(!this.getExpanded());
+}
+
+function igtbl_gGetRowSelected()
+{
+	if(igtbl_getGridById(this.gridId).SelectedRows[this.FirstRow.id])
+		return true;
+	return false;
+}
+
+function igtbl_gSetRowSelected(select)
+{
+	if(this.Band.getSelectTypeRow()>1)
+		igtbl_selectRow(this.gridId,this.Element.id,select);
+}
+
+function igtbl_gGetNextRow()
+{
+	var nr=this.getIndex()+1;
+	while(nr<this.OwnerCollection.length && this.OwnerCollection.getRow(nr).getHidden())
+		nr++;
+	if(nr<this.OwnerCollection.length)
+		return this.OwnerCollection.getRow(nr);
+	return null;
+}
+
+function igtbl_gGetPrevRow()
+{
+	var pr=this.getIndex()-1;
+	while(pr>=0 && this.OwnerCollection.getRow(pr).getHidden())
+		pr--;
+	if(pr>=0)
+		return this.OwnerCollection.getRow(pr);
+	return null;
+}
+
+function igtbl_gRowActivate()
+{
+	this.Band.Grid.setActiveRow(this);
+}
+
+function igtbl_gRowScrollToView()
+{
+	igtbl_scrollToView(this.gridId,this.Element);
+}
+
+function igtbl_gRowDelete()
+{
+	var gs=igtbl_getGridById(this.gridId);
+	var del=false;
+	var rowId=this.Element.id;
+	var bandAllowDel=this.Band.AllowDelete;
+	if(igtbl_fireEvent(this.gridId,gs.Events.BeforeRowDeleted,"(\""+this.gridId+"\",\""+rowId+"\")")==true)
+		bandAllowDel=2;
+	if(bandAllowDel==1 || bandAllowDel==0 && gs.AllowDelete==1)
+	{
+		del=true;
+		if(gs.SelectedRows[rowId]==true)
+			gs.SelectedRows[rowId]=false;
+		if(this.getExpanded())
+			this.toggleRow();
+		if(!this.OwnerCollection.deletedRows)
+			this.OwnerCollection.deletedRows=new Array();
+		var level=this.Element.getAttribute("level");
+		if(!level)
+			level=true;
+		gs.DeletedRows[rowId]=level;
+		this.Element.setAttribute("deleted",true);
+		var needPB=false;
+		for(var i=0;i<this.Band.Columns.length;i++)
+		{
+			var cell=this.getCellByColumn(this.Band.Columns[i]);
+			if(!cell)
+			{
+				var row=this;
+				while(row.getPrevRow() && !cell)
+				{
+					row=row.getPrevRow();
+					cell=row.getCellByColumn(this.Band.Columns[i]);
+				}
+				if(row==this || !cell || cell.Element.rowSpan==1)
+				{
+					needPB=true;
+					break;
+				}
+			}
+			else if(cell.Element.rowSpan>1)
+			{
+				needPB=true;
+				break;
+			}
+			if(cell && cell.Element.rowSpan>1)
+				cell.Element.rowSpan--;
+		}
+		if(!needPB)
+		{
+			this.OwnerCollection.deletedRows.push(this.remove());
+			this.OwnerCollection.length--;
+			var pr=this.ParentRow;
+			while(pr)
+			{
+				if(pr.Expandable && pr.Rows.length==0)
+				{
+					pr.setExpanded(false);
+					if(pr.GroupByRow)
+					{
+						level=pr.Element.getAttribute("level");
+						if(!level)
+							level=true;
+						gs.DeletedRows[pr.Element.id]=level;
+						pr.setAttribute("deleted",true);
+						this.OwnerCollection.deletedRows.push(pr.remove());
+						gs.SelectedRows[pr.Element.id]=false;
+					}
+					else
+						pr.Element.childNodes[0].childNodes[0].style.display="none";
+				}
+				pr=pr.ParentRow;
+			}
+		}
+		else
+			igtbl_needPostBack(this.gridId);
+		igtbl_fireEvent(this.gridId,gs.Events.AfterRowDeleted,"(\""+this.gridId+"\",\""+rowId+"\");");
+	}
+	return del;
+}
+
+function igtbl_getRowLeft()
+{
+	return igtbl_getLeftPos(igtbl_getElemVis(this.Element.cells,igtbl_getBandFAC(this.gridId,this.Element)));
+}
+
+function igtbl_getRowTop()
+{
+	var t=igtbl_getTopPos(this.Element);
+	return t;
+}
+
+var igtbl_oldMouseDown=null;
+var igtbl_currentEditTempl="";
+var igtbl_justAssigned=false;
+var igtbl_focusedElement=null;
+
+function igtbl_gRowEdit()
+{
+	var au=igtbl_getAllowUpdate(this.gridId,this.Band.Index);
+	if(igtbl_currentEditTempl!="" || au!=1 && au!=3)
+		return;
+	var editTempl=igtbl_getElementById(this.Band.RowTemplate);
+	if(!editTempl)
+		return;
+	if(igtbl_fireEvent(this.gridId,igtbl_getGridById(this.gridId).Events.BeforeRowTemplateOpen,"(\""+this.gridId+"\",\""+this.Element.id+"\")"))
+		return;
+	if(editTempl.style.filter!=null && this.Band.ExpandEffects && this.Band.ExpandEffects.length>0)
+	{
+		var ee=this.Band.ExpandEffects;
+		if(ee.Type!='NotSet')
+		{
+			editTempl.style.filter="progid:DXImageTransform.Microsoft."+ee.Type+"(duration="+ee.Duration/1000+");"
+			if(ee.ShadowWidth>0)
+				editTempl.style.filter+=" progid:DXImageTransform.Microsoft.Shadow(Direction=135, Strength="+ee.ShadowWidth+",color="+ee.ShadowColor+");"
+			if(ee.Opacity<100)
+				editTempl.style.filter+=" progid:DXImageTransform.Microsoft.Alpha(Opacity="+ee.Opacity+");"
+			if(editTempl.filters[0]!=null)
+				editTempl.filters[0].apply();
+			if(editTempl.filters[0]!=null)
+				editTempl.filters[0].play();
+		}
+		else
+		{
+			if(ee.ShadowWidth>0)
+				editTempl.runtimeStyle.filter="progid:DXImageTransform.Microsoft.Shadow(Direction=135, Strength="+ee.ShadowWidth+",ee.Color="+ee.ShadowColor+");"
+			if(ee.Opacity<100)
+				editTempl.runtimeStyle.filter+=" progid:DXImageTransform.Microsoft.Alpha(Opacity="+ee.Opacity+");"
+		}
+	}
+	editTempl.style.display="";
+	editTempl.setAttribute("noHide",true);
+	editTempl.style.left=this.getLeft()-(document.body.clientLeft?document.body.clientLeft:0)-1;
+	var tw=editTempl.clientWidth;
+	var bw=document.body.clientWidth;
+	if(editTempl.offsetLeft+tw>bw)
+		if(bw-tw+document.body.scrollLeft>0)
+			editTempl.style.left=bw-tw+document.body.scrollLeft;
+		else
+			editTempl.style.left=0;
+	editTempl.style.top=this.getTop()+this.Element.offsetHeight-(document.body.clientTop?document.body.clientTop:0)-1;
+	var th=editTempl.clientHeight;
+	var bh=document.body.clientHeight;
+	if(editTempl.offsetTop+th>bh)
+		if(bh-th+document.body.scrollTop>0)
+			editTempl.style.top=bh-th+document.body.scrollTop;
+		else
+			editTempl.style.top=0;
+	editTempl.setAttribute("editRow",this.Element.id);
+	igtbl_fillEditTemplate(this,editTempl.childNodes);
+	if(igtbl_focusedElement && igtbl_isVisible(igtbl_focusedElement))
+	{
+		igtbl_focusedElement.focus();
+		igtbl_focusedElement.select();
+		igtbl_focusedElement=null;
+	}
+	igtbl_currentEditTempl=this.Band.RowTemplate;
+	igtbl_oldMouseDown=document.onmousedown;
+	document.onmousedown=igtbl_gRowEditMouseDown;
+	igtbl_justAssigned=true;
+	window.setTimeout(igtbl_resetJustAssigned,500);
+	editTempl.removeAttribute("noHide");
+	igtbl_fireEvent(this.gridId,igtbl_getGridById(this.gridId).Events.AfterRowTemplateOpen,"(\""+this.gridId+"\",\""+this.Element.id+"\")");
+}
+
+function igtbl_resetJustAssigned()
+{
+	igtbl_justAssigned=false;
+}
+
+function igtbl_fillEditTemplate(row,childNodes)
+{
+	for(var i=childNodes.length-1;i>=0;i--)
+	{
+		var el=childNodes[i];
+		if(!el.getAttribute)
+			continue;
+		var colKey=el.getAttribute("columnKey");
+		var column=row.Band.getColumnFromKey(colKey);
+		if(column)
+		{
+			var cell=row.getCellByColumn(column);
+			if(!cell)
+			{
+				el.disabled=true;
+				continue;
+			}
+			var s="(\""+row.gridId+"\",\""+el.id+"\",\""+cell.Element.id+"\",\""+cell.getValue()+"\")";
+			s=s.replace(/\r\n/g,"\\r\\n");
+			if(!igtbl_fireEvent(row.gridId,igtbl_getGridById(row.gridId).Events.TemplateUpdateControls,s))
+			{
+				if(el.tagName=="SELECT")
+				{
+					for(var j=0;j<el.childNodes.length;j++)
+						if(el.childNodes[j].tagName=="OPTION")
+							if(el.childNodes[j].value==cell.getValue())
+							{
+								el.childNodes[j].selected=true;
+								break;
+							}
+				}
+				else if(el.tagName=="INPUT" && el.type=="checkbox")
+					el.checked=cell.getValue();
+				else if(el.tagName=="DIV" || el.tagName=="SPAN")
+				{
+					for(var j=0;j<el.childNodes.length;j++)
+					{
+						if(el.childNodes[j].tagName=="INPUT" && el.childNodes[j].type=="radio")
+							if(el.childNodes[j].value==cell.getValue())
+							{
+								el.childNodes[j].checked=true;
+								break;
+							}
+					}
+				}
+				else
+					el.value=cell.getValue();
+				if(!el.isDisabled)
+					igtbl_focusedElement=el;
+			}
+		}
+		else if(el.childNodes && el.childNodes.length>0)
+			igtbl_fillEditTemplate(row,el.childNodes);
+	}
+}
+
+function igtbl_gRowEndEdit(saveChanges)
+{
+	var gs=igtbl_getGridById(this.gridId);
+	var editTempl=igtbl_getElementById(this.Band.RowTemplate);
+	if(!editTempl || editTempl.style.display!="")
+		return;
+	if(editTempl.getAttribute("noHide"))
+		return;
+	if(igtbl_fireEvent(this.gridId,gs.Events.BeforeRowTemplateClose,"(\""+this.gridId+"\",\""+this.Element.id+"\")"))
+		return;
+	editTempl.style.display="none";
+	igtbl_currentEditTempl="";
+	document.onmousedown=igtbl_oldMouseDown;
+	if(saveChanges)
+		igtbl_unloadEditTemplate(this,editTempl.childNodes);
+	if(gs.ActiveCell!="")
+		igtbl_setActiveCell(this.gridId,igtbl_getElementById(gs.ActiveCell));
+	else if(gs.ActiveRow!="")
+		igtbl_setActiveRow(this.gridId,igtbl_getElementById(gs.ActiveRow));
+	igtbl_fireEvent(this.gridId,gs.Events.AfterRowTemplateClose,"(\""+this.gridId+"\",\""+this.Element.id+"\")");
+}
+
+function igtbl_unloadEditTemplate(row,childNodes)
+{
+	for(var i=0;i<childNodes.length;i++)
+	{
+		var el=childNodes[i];
+		if(!el.getAttribute)
+			continue;
+		var colKey=el.getAttribute("columnKey");
+		var column=row.Band.getColumnFromKey(colKey);
+		if(column)
+		{
+			var cell=row.getCellByColumn(column);
+			if(cell && !igtbl_fireEvent(row.gridId,igtbl_getGridById(row.gridId).Events.TemplateUpdateCells,"(\""+row.gridId+"\",\""+el.id+"\",\""+cell.Element.id+"\")"))
+			{
+				if(el.tagName=="SELECT")
+					cell.setValue(el.options[el.selectedIndex].value);
+				else if(el.tagName=="INPUT" && el.type=="checkbox")
+					cell.setValue(el.checked);
+				else if(el.tagName=="DIV" || el.tagName=="SPAN")
+				{
+					for(var j=0;j<el.childNodes.length;j++)
+					{
+						if(el.childNodes[j].tagName=="INPUT" && el.childNodes[j].type=="radio")
+							if(el.childNodes[j].checked)
+							{
+								cell.setValue(el.childNodes[j].value);
+								break;
+							}
+					}
+				}
+				else if(el.value)
+					cell.setValue(el.value);
+			}
+		}
+		else if(el.childNodes && el.childNodes.length>0)
+			igtbl_unloadEditTemplate(row,el.childNodes);
+	}
+}
+
+function igtbl_gRowEditMouseDown(evnt)
+{
+	if(igtbl_justAssigned)
+	{
+		igtbl_justAssigned=false;
+		return;
+	}
+	if(!evnt)
+		evnt=event;
+	var src=igtbl_srcElement(evnt);
+	var editTempl=igtbl_getElementById(igtbl_currentEditTempl);
+	if(editTempl && !editTempl.contains(src))
+	{
+		var rId=editTempl.getAttribute("editRow");
+		var row=igtbl_getRowById(rId);
+		row.endEditRow();
+	}
+}
+
+function igtbl_gRowEditButtonClick(evnt)
+{
+	if(!evnt)
+		evnt=event;
+	var src=igtbl_srcElement(evnt);
+	var editTempl=igtbl_getElementById(igtbl_currentEditTempl);
+	if(editTempl)
+	{
+		var rId=editTempl.getAttribute("editRow");
+		var row=igtbl_getRowById(rId);
+		if(src.id=="igtbl_reOkBtn")
+			row.endEditRow(true);
+		else if(src.id=="igtbl_reCancelBtn")
+			row.endEditRow();
+	}
+}
+
+function igtbl_gRowGetHidden()
+{
+	return (this.Element.style.display=="none");
+}
+
+function igtbl_gRowSetHidden(h)
+{
+	this.Element.style.display=(h?"none":"");
+	var ac=this.Band.Grid.getActiveCell();
+	if(ac && ac.Row==this && h)
+		this.Band.Grid.setActiveCell(null);
+	else
+	{
+		var ar=this.Band.Grid.getActiveRow();
+		if(ar && ar==this && h)
+			this.Band.Grid.setActiveRow(null);
+		else
+			this.Band.Grid.alignGrid();
+	}
+}
+
+function igtbl_gRowFind(re,back)
+{
+	var g=this.Band.Grid;
+	if(re)
+		g.regExp=re;
+	if(!g.regExp)
+		return null;
+	g.lastSearchedCell=null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var cell=null;
+	if(!g.backwardSearch)
+	{
+		cell=this.getCell(0);
+		if(cell && cell.Column.getHidden())
+			cell=cell.getNextCell();
+		while(cell && cell.getValue().toString().search(g.regExp)==-1)
+			cell=cell.getNextCell();
+	}
+	else
+	{
+		cell=this.getCell(this.cells.length-1);
+		if(cell && cell.Column.getHidden())
+			cell=cell.getPrevCell();
+		while(cell && cell.getValue().toString().search(g.regExp)==-1)
+			cell=cell.getPrevCell();
+	}
+	if(cell)
+		g.lastSearchedCell=cell;
+	return g.lastSearchedCell;
+}
+
+function igtbl_gRowFindNext(re,back)
+{
+	var g=this.Band.Grid;
+	if(!g.lastSearchedCell || g.lastSearchedCell.Row!=this)
+		return this.find(re,back);
+	if(re)
+		g.regExp=re;
+	if(!g.regExp)
+		return null;
+	if(back==true || back==false)
+		g.backwardSearch=back;
+	var cell=null;
+	if(!g.backwardSearch)
+	{
+		cell=g.lastSearchedCell.getNextCell();
+		while(cell && cell.getValue().toString().search(g.regExp)==-1)
+			cell=cell.getNextCell();
+	}
+	else
+	{
+		cell=g.lastSearchedCell.getPrevCell();
+		while(cell && cell.getValue().toString().search(g.regExp)==-1)
+			cell=cell.getPrevCell();
+	}
+	if(cell)
+		g.lastSearchedCell=cell;
+	else
+		g.lastSearchedCell=null;
+	return g.lastSearchedCell;
+}
+
+function igtbl_initCellInfo(row,index)
+{
+	var cell=row.Element.cells[row.Band.firstActiveCell+parseInt(index)];
+	if(!cell)
+		return null;
+	var gs=igtbl_getGridById(row.gridId);
+	this.Element=cell;
+	this.Row=row;
+	this.Column=igtbl_getColumnById(cell.id);
+	this.Band=row.Band;
+	this.MaskedValue=igtbl_getInnerText(cell);
+	this.getValue=igtbl_getCellValue;
+	this.setValue=igtbl_setCellValue;
+	this.getRow=igtbl_getCellRow;
+	this.NextSibling=cell.nextSibling;
+	if(cell.cellIndex==igtbl_getBandFAC(row.gridId,cell))
+		this.PrevSibling=null;
+	else
+		this.PrevSibling=cell.previousSibling;
+	this.Index=index;
+	this.getNextTabCell=igtbl_gGetNextTabCell;
+	this.beginEdit=igtbl_gEditCell;
+	this.endEdit=igtbl_gEndEditCell;
+	this.getSelected=igtbl_gGetCellSelected;
+	this.setSelected=igtbl_gSetCellSelected;
+	this.getNextCell=igtbl_gGetNextCell;
+	this.getPrevCell=igtbl_gGetPrevCell;
+	this.activate=igtbl_gCellActivate;
+	this.scrollToView=igtbl_gCellScrollToView;
+	this.isEditable=igtbl_gCellIsEditable;
+}
+
+function igtbl_valueFromString(value,dataType)
+{
+	switch(dataType)
+	{
+		case 2: // integer
+		case 3:
+		case 16:
+		case 17:
+		case 18:
+		case 19:
+		case 20:
+		case 21:
+			value=parseInt(value,10);
+			break;
+		case 4: // float
+		case 5:
+		case 14:
+			value=parseFloat(value);
+			break;
+		case 11: // boolean
+			if(!value || value.toString()=="0" || value.toString().toLowerCase()=="false")
+				value=false;
+			else
+				value=true;
+			break;
+		case 7: // datetime
+			var d=new Date(value);
+			if(d.toString()!="NaN" && d.toString()!="Invalid Date")
+				value=d;
+			else
+				value=igtbl_trim(value);
+			break;
+		default:
+			value=igtbl_trim(value);
+	}
+	return value;
+}
+
+function igtbl_getCellValue()
+{
+	var value=this.Element.getAttribute("igCellText");
+	if(!value)
+	{
+		value=this.Element.getAttribute("unmaskedValue");
+		if(!value)
+		{
+			if(this.Element.childNodes[0].tagName=="NOBR")
+				value=igtbl_getInnerText(this.Element.childNodes[0]);
+			else
+				value=igtbl_getInnerText(this.Element);
+		}
+		if(this.Column.Type==3 && this.Element.childNodes.length>0)
+		{
+			var chBox=this.Element.childNodes[0];
+			while(chBox && chBox.tagName!="INPUT")
+				chBox=chBox.childNodes[0];
+			value=false;
+			if(chBox)
+				value=chBox.checked;
+		}
+		else if(this.Column.Type==5 && this.Column.ValueList.length>0)
+		{
+			for(var i=0;i<this.Column.ValueList.length;i++)
+				if(this.Column.ValueList[i][1]==value)
+				{
+					value=this.Column.ValueList[i][0];
+					break;
+				}
+		}
+		else if(this.Column.Type==7 && this.Element.childNodes.length>0)
+		{
+			var button=this.Element.childNodes[0];
+			while(button && button.tagName!="INPUT")
+				button=button.childNodes[0];
+			value="";
+			if(button)
+				value=button.value;
+		}
+	}
+	value=igtbl_valueFromString(value,this.Column.DataType);
+	return value;
+}
+
+function igtbl_setCellValue(value)
+{
+	var gn=this.Row.gridId;
+	var gs=igtbl_getGridById(gn);
+	if(igtbl_fireEvent(gn,gs.Events.BeforeCellUpdate,"(\""+gn+"\",\""+this.Element.id+"\",\""+value+"\")")==true)
+		return;
+	var v=value;
+	if(this.Element.getAttribute("igCellText"))
+		this.Element.setAttribute("igCellText",value);
+	else 
+	{
+		if(this.Column.MaskDisplay!="")
+		{
+			this.Element.setAttribute("unmaskedValue",value);
+			v=igtbl_Mask(gn,v,this.Column.DataType,this.Column.MaskDisplay);
+			if(v=="")
+				v=this.getValue();
+			else
+				this.MaskedValue=v;
+		}
+		if(this.Column.Type==3 && this.Element.childNodes.length>0)
+		{
+			igtbl_dontHandleChkBoxChange=true;
+			var chBox=this.Element.childNodes[0];
+			while(chBox && chBox.tagName!="INPUT")
+				chBox=chBox.childNodes[0];
+			if(chBox)
+			{
+				if(!value || value.toString().toLowerCase()=="false")
+					chBox.checked=false;
+				else
+					chBox.checked=true;
+			}
+			igtbl_dontHandleChkBoxChange=false;
+		}
+		else if(this.Column.Type==5 && this.Column.ValueList.length>0)
+		{
+			for(var i=0;i<this.Column.ValueList.length;i++)
+				if(this.Column.ValueList[i][0]==value)
+				{
+					v=this.Column.ValueList[i][1];
+					igtbl_setInnerText(this.Element,v);
+					break;
+				}
+			if(i==this.Column.ValueList.length)
+			{
+				if(this.Element.childNodes.length>0 && this.Element.childNodes[0].tagName=="NOBR")
+					igtbl_setInnerText(this.Element.childNodes[0],v);
+				else
+					igtbl_setInnerText(this.Element,v);
+			}
+		}
+		else if(this.Column.Type==7 && this.Element.childNodes.length>0)
+		{
+			var button=this.Element.childNodes[0];
+			while(button && button.tagName!="INPUT")
+				button=button.childNodes[0];
+			if(button)
+				button.value=value;
+		}
+		else
+		{
+			if(this.Element.childNodes.length>0 && this.Element.childNodes[0].tagName=="NOBR")
+			{
+				if(this.Element.childNodes[0].childNodes.length>0 && this.Element.childNodes[0].childNodes[0].tagName=="A")
+				{
+					igtbl_setInnerText(this.Element.childNodes[0].childNodes[0],v);
+					this.Element.childNodes[0].childNodes[0].href=(v.indexOf('@')>=0?"mailto:":"")+v;
+				}
+				else
+					igtbl_setInnerText(this.Element.childNodes[0],v);
+			}
+			else if(this.Element.childNodes.length>0 && this.Element.childNodes[0].tagName=="A")
+			{
+				igtbl_setInnerText(this.Element.childNodes[0],v);
+				this.Element.childNodes[0].href=(v.indexOf('@')>=0?"mailto:":"")+v;
+			}
+			else
+				igtbl_setInnerText(this.Element,v);
+		}
+	}
+	gs.ChangedCells[this.Element.id]=value;
+	igtbl_updatePostField(gn);
+	if(!(this.Column.Type==3 && this.Element.childNodes.length>0))
+		igtbl_fireEvent(gn,gs.Events.AfterCellUpdate,"(\""+gn+"\",\""+this.Element.id+"\",\""+value+"\")");
+	if(gs.NeedPostBack)
+		igtbl_doPostBack(gn);
+}
+
+function igtbl_getCellRow()
+{
+	return this.Row;
+}
+	
+function igtbl_getChildRow(index)
+{
+	if(!this.Expandable)
+		return null;
+	if(index<0 || index>=this.ChildRowsCount)
+		return null;
+	var i=0;
+	var r=this.FirstChildRow;
+	while(i<index && r)
+		r=igtbl_getNextSibRow(this.gridId,r);
+	return r;
+}
+
+function igtbl_gGetNextTabCell(shift)
+{
+	var cell=null;
+	if(shift)
+	{
+		cell=this.getPrevCell();
+		if(!cell)
+		{
+			var row=this.Row.getNextTabRow(true);
+			if(row)
+			{
+				cell=row.getCell(row.cells.length-1);
+				if(cell.Column.getHidden())
+					cell=cell.getPrevCell();
+			}
+		}
+	}
+	else
+	{
+		cell=this.getNextCell();
+		if(!cell)
+		{
+			var row=this.Row.getNextTabRow(false);
+			if(row)
+			{
+				cell=row.getCell(0);
+				if(cell.Column.getHidden())
+					cell=cell.getNextCell();
+			}
+		}
+	}
+	return cell;
+}
+
+function igtbl_gEditCell(keyCode)
+{
+	igtbl_editCell((typeof(event)!="undefined"?event:null),this.Row.gridId,this.Element,keyCode);
+}
+
+function igtbl_gEndEditCell()
+{
+	igtbl_hideEdit(this.Row.gridId);
+}
+
+function igtbl_gGetCellSelected()
+{
+	if(igtbl_getGridById(this.Row.gridId).SelectedCells[this.Element.id])
+		return true;
+	return false;
+}
+
+function igtbl_gSetCellSelected(select)
+{
+	if(this.Band.getSelectTypeCell()>1)
+		igtbl_selectCell(this.Row.gridId,this.Element.id,select);
+}
+
+function igtbl_gGetNextCell()
+{
+	var nc=this.Index+1;
+	while(nc<this.Row.cells.length && this.Row.getCell(nc).Column.getHidden())
+		nc++;
+	if(nc<this.Row.cells.length)
+		return this.Row.getCell(nc);
+	return null;
+}
+
+function igtbl_gGetPrevCell()
+{
+	var pc=this.Index-1;
+	while(pc>=0 && this.Row.getCell(pc).Column.getHidden())
+		pc--;
+	if(pc>=0)
+		return this.Row.getCell(pc);
+	return null;
+}
+
+function igtbl_gCellActivate()
+{
+	this.Row.Band.Grid.setActiveCell(this);
+}
+
+function igtbl_gCellScrollToView()
+{
+	igtbl_scrollToView(this.Row.gridId,this.Element);
+}
+
+function igtbl_gCellIsEditable()
+{
+	if(this.Element.getAttribute("allowedit")=='no')
+		return false;
+	if(this.Element.getAttribute("allowedit")=='yes')
+		return true;
+	return igtbl_getAllowUpdate(this.Row.gridId,this.Column.Band.Index,this.Column.Index)==1;
+}
